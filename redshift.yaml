@@ -1,0 +1,5 @@
+HOST: redshift-prod.amber-data.com
+PORT: 5439
+USER: data_engg
+PASS: Data_engg_123
+NAME: amberdb
