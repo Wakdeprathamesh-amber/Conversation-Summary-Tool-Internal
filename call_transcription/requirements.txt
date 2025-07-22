@@ -3,4 +3,5 @@ uvicorn
 python-dotenv
 assemblyai
 gunicorn
-uvicorn[standard] 
+uvicorn[standard]
+requests 
