@@ -83,11 +83,14 @@ def generate_summary_api(mobile: str = Query(None), email: str = Query(None)):
     except Exception as e:
         return JSONResponse(status_code=500, content={"error": str(e)})
 
-if __name__ == "__main__":
-    if len(sys.argv) > 1 and sys.argv[1] == "api":
-        uvicorn.run("app:app", host="0.0.0.0", port=8000, reload=True)
-    else:
-        # For now, just test with Lead001
-        result = generate_requirements_summary("data/timeline_Lead001.json")
-        print("\n===== ON-DEMAND SUMMARY OUTPUT =====")
-        print(json.dumps(result, indent=2)) 
+# The following block is for local development and can be removed for production,
+# as the server will be started by Gunicorn/Uvicorn in the start.sh script.
+#
+# if __name__ == "__main__":
+#     if len(sys.argv) > 1 and sys.argv[1] == "api":
+#         uvicorn.run("app:app", host="0.0.0.0", port=8000, reload=True)
+#     else:
+#         # For now, just test with Lead001
+#         result = generate_requirements_summary("data/timeline_Lead001.json")
+#         print("\n===== ON-DEMAND SUMMARY OUTPUT =====")
+#         print(json.dumps(result, indent=2)) 
