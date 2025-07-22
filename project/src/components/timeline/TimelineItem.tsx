@@ -10,6 +10,8 @@ interface TimelineItemProps {
   onToggleExpand: () => void;
 }
 
+const TRANSCRIPTION_API_URL = import.meta.env.VITE_TRANSCRIPTION_API_URL || 'http://localhost:8001';
+
 const TimelineItem: React.FC<TimelineItemProps> = ({
   item,
   isLast,
@@ -150,7 +152,7 @@ const TimelineItem: React.FC<TimelineItemProps> = ({
     setTranscribeError(null);
     setTranscript(null);
     try {
-      const response = await fetch('http://localhost:8001/transcribe-call', {
+      const response = await fetch(`${TRANSCRIPTION_API_URL}/transcribe-call`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ record_url: item.record_url, mobile_number: item.to_number, call_id: item.id }),

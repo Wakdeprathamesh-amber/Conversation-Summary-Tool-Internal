@@ -1,3 +1,6 @@
-assemblyai
+fastapi
+uvicorn
 python-dotenv
-requests 
+assemblyai
+gunicorn
+uvicorn[standard] 
