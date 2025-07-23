@@ -8,3 +8,4 @@ tiktoken
 beautifulsoup4
 gunicorn
 uvicorn[standard]
+redshift-connector
