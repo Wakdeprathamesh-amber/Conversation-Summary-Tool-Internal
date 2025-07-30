@@ -24,6 +24,12 @@ class Databaseconnect:
         with open(config_path, 'r') as file:
             self.config = yaml.safe_load(file)
 
+# class Databaseconnect:
+#     def __init__(self, config_path='/etc/secrets/redshift.yaml'):
+#         with open(config_path, 'r') as file:
+#             self.config = yaml.safe_load(file)
+
+
     def connect_database(self):
         connection = redshift_connector.connect(
             database=self.config["NAME"],

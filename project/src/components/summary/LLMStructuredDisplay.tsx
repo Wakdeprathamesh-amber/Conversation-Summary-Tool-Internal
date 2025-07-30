@@ -13,35 +13,48 @@ interface Task {
 interface LLMStructuredDisplayProps {
   requirements: {
     user_persona?: {
-      booking_for?: string;
-      name?: string;
+      booking_for?: string | null;
+      name?: string | null;
       mobile?: string[];
       email?: string[];
       whatsapp?: string[];
-      student_status?: string;
+      student_status?: string | null;
       nationality?: string | null;
     };
     accommodation_requirements?: {
       location?: string[];
-      lease_duration_months?: number;
-      room_type?: string;
-      budget?: number | null;
+      lease_duration_weeks?: number | null;
+      room_type?: string | null;
+      budget?: {
+        max?: number | null;
+        currency?: string | null;
+      };
       bathroom_type?: string | null;
-      university?: string;
-      move_in_date?: string;
-      housing_type?: string;
-      [key: string]: any;
+      kitchen_type?: string | null;
+      dual_occupancy?: boolean | null;
+      university?: string | null;
+      move_in_date?: string | null;
+      dependents?: string | null;
+      amenities?: string[];
+      housing_type?: string | null;
+      nearby_preferences?: string[];
+      pet_friendly?: boolean | null;
+      payment_plan?: string | null;
+      course_year?: string | null;
     };
     student_journey?: {
-      I20_form?: string | null;
+      I20_form?: string[];
       university_acceptance?: string[];
       flight_booking?: string[];
       visa_status?: string[];
-      guarantor?: boolean;
+      guarantor?: string | null;
     };
     properties_under_consideration?: {
       properties_considered?: string[];
       rooms_considered?: string[];
+    };
+    other_info?: {
+      referral_code_or_offer_discussed?: string | null;
     };
   };
   tasks_and_actionables: {
@@ -88,13 +101,25 @@ const KeyValueTable: React.FC<{ data: Record<string, any> }> = ({ data }) => (
             {key.replace(/_/g, ' ')}
           </dt>
           <dd className="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">
-            {Array.isArray(value) 
-              ? value.filter(Boolean).join(', ') || 'None'
-              : value === null || value === undefined || value === '' 
-                ? 'None'
-                : typeof value === 'boolean'
-                  ? value ? 'Yes' : 'No'
-                  : value.toString()}
+            {value === null || value === undefined || value === '' 
+              ? 'None'
+              : typeof value === 'object' && !Array.isArray(value)
+                ? (() => {
+                    // Special handling for budget object
+                    if (key === 'budget' && value.max && value.currency) {
+                      return `${value.max} ${value.currency}`;
+                    }
+                    // Handle other nested objects
+                    return Object.entries(value)
+                      .filter(([_, v]) => v !== null && v !== undefined && v !== '')
+                      .map(([k, v]) => `${k.replace(/_/g, ' ')}: ${v}`)
+                      .join(', ') || 'None';
+                  })()
+                : Array.isArray(value)
+                  ? value.filter(Boolean).join(', ') || 'None'
+                  : typeof value === 'boolean'
+                    ? value ? 'Yes' : 'No'
+                    : value.toString()}
           </dd>
         </div>
       ))}
@@ -317,6 +342,12 @@ const LLMStructuredDisplay: React.FC<LLMStructuredDisplayProps> = ({ requirement
           {requirements.properties_under_consideration && (
             <Section title="Properties Under Consideration">
               <KeyValueTable data={requirements.properties_under_consideration} />
+            </Section>
+          )}
+          
+          {requirements.other_info && (
+            <Section title="Other Information">
+              <KeyValueTable data={requirements.other_info} />
             </Section>
           )}
         </div>

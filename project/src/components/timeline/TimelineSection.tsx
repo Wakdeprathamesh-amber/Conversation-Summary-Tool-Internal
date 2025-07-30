@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback, useRef } from 'react';
 import TimelineItem from './TimelineItem';
 import LLMSummaryDisplay from '../summary/LLMSummaryDisplay';
 
@@ -15,20 +15,31 @@ const TimelineSection: React.FC<TimelineSectionProps> = ({
   isSummaryLoading,
   summary
 }) => {
-  const [expandedItems, setExpandedItems] = useState<Set<string>>(new Set());
+  const [expandedItems, setExpandedItems] = useState<Record<string, boolean>>({});
   const [transcribingAll, setTranscribingAll] = useState(false);
   const [transcribeProgress, setTranscribeProgress] = useState<number>(0);
   const [transcribeErrors, setTranscribeErrors] = useState<string[]>([]);
   const [transcripts, setTranscripts] = useState<Record<string, string>>({});
+  const [individualTranscribing, setIndividualTranscribing] = useState<Record<string, boolean>>({});
+  const [individualTranscribeErrors, setIndividualTranscribeErrors] = useState<Record<string, string>>({});
+  
+  // Keep track of items that should stay expanded during transcription
+  const [forceExpandedItems, setForceExpandedItems] = useState<Record<string, boolean>>({});
+  
+  // Use ref to track expanded state immediately
+  const expandedItemsRef = useRef<Record<string, boolean>>({});
+  const forceExpandedItemsRef = useRef<Record<string, boolean>>({});
 
   const toggleExpanded = (itemId: string) => {
-    const newExpanded = new Set(expandedItems);
-    if (newExpanded.has(itemId)) {
-      newExpanded.delete(itemId);
-    } else {
-      newExpanded.add(itemId);
-    }
-    setExpandedItems(newExpanded);
+    setExpandedItems(prev => ({
+      ...prev,
+      [itemId]: !prev[itemId]
+    }));
+    // Clear force expanded when manually toggled
+    setForceExpandedItems(prev => ({
+      ...prev,
+      [itemId]: false
+    }));
   };
 
   // Get the conversation summary markdown from the summary object
@@ -39,6 +50,47 @@ const TimelineSection: React.FC<TimelineSectionProps> = ({
     : '';
 
   // Transcribe all calls logic
+  const TRANSCRIPTION_API_URL = import.meta.env.VITE_TRANSCRIPTION_API_URL || 'http://localhost:8001';
+  
+  // Individual transcription handler
+  const handleIndividualTranscribe = useCallback(async (item: any) => {
+    // Use the same robust key generation as in the render
+    const itemId = item.id || `item-${timelineData.findIndex(i => i === item)}`;
+    const itemKey = `${itemId}-${item.type}`;
+    
+    // Ensure the item stays expanded during transcription - use immediate state update
+    setExpandedItems(prev => {
+      const newState = { ...prev, [itemKey]: true };
+      expandedItemsRef.current = newState;
+      return newState;
+    });
+    setForceExpandedItems(prev => {
+      const newState = { ...prev, [itemKey]: true };
+      forceExpandedItemsRef.current = newState;
+      return newState;
+    });
+    
+    setIndividualTranscribing(prev => ({ ...prev, [itemKey]: true }));
+    setIndividualTranscribeErrors(prev => ({ ...prev, [itemKey]: '' }));
+    
+    try {
+      const response = await fetch(`${TRANSCRIPTION_API_URL}/transcribe-call`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ record_url: item.record_url, mobile_number: item.to_number, call_id: item.id }),
+      });
+      if (!response.ok) throw new Error(await response.text());
+      const text = await response.text();
+      setTranscripts(prev => ({ ...prev, [itemKey]: text }));
+    } catch (err: any) {
+      setIndividualTranscribeErrors(prev => ({ ...prev, [itemKey]: err.message || 'Failed to transcribe' }));
+    } finally {
+      setIndividualTranscribing(prev => ({ ...prev, [itemKey]: false }));
+      // Clear force expanded after transcription completes
+      setForceExpandedItems(prev => ({ ...prev, [itemKey]: false }));
+    }
+  }, [expandedItems]);
+  
   const handleTranscribeAll = async () => {
     setTranscribingAll(true);
     setTranscribeProgress(0);
@@ -48,16 +100,20 @@ const TimelineSection: React.FC<TimelineSectionProps> = ({
     let completed = 0;
     for (const item of callItems) {
       try {
-        const response = await fetch('http://localhost:8001/transcribe-call', {
+        const itemId = item.id || `item-${timelineData.findIndex(i => i === item)}`;
+        const itemKey = `${itemId}-${item.type}`;
+        
+        const response = await fetch(`${TRANSCRIPTION_API_URL}/transcribe-call`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ record_url: item.record_url, mobile_number: item.to_number, call_id: item.id }),
         });
         if (!response.ok) throw new Error(await response.text());
         const text = await response.text();
-        newTranscripts[item.id] = text;
+        newTranscripts[itemKey] = text;
       } catch (err: any) {
-        setTranscribeErrors(prev => [...prev, `Call ${item.id}: ${err.message || 'Failed to transcribe'}`]);
+        const itemId = item.id || `item-${timelineData.findIndex(i => i === item)}`;
+        setTranscribeErrors(prev => [...prev, `Call ${itemId}: ${err.message || 'Failed to transcribe'}`]);
       }
       completed++;
       setTranscribeProgress(Math.round((completed / callItems.length) * 100));
@@ -93,15 +149,26 @@ const TimelineSection: React.FC<TimelineSectionProps> = ({
           </div>
         )}
         <div className="space-y-4">
-          {timelineData.map((item, index) => (
-            <TimelineItem
-              key={item.id}
-              item={{ ...item, transcript: transcripts[item.id] }}
-              isLast={index === timelineData.length - 1}
-              isExpanded={expandedItems.has(item.id)}
-              onToggleExpand={() => toggleExpanded(item.id)}
-            />
-          ))}
+          {timelineData.map((item, index) => {
+            // Create a robust key that handles undefined IDs
+            const itemId = item.id || `item-${index}`;
+            const itemKey = `${itemId}-${item.type}`;
+            const uniqueKey = `${itemId}-${item.type}-${index}`;
+            
+            return (
+              <TimelineItem
+                key={uniqueKey}
+                item={{ ...item, transcript: transcripts[itemKey] }}
+                isLast={index === timelineData.length - 1}
+                isExpanded={!!expandedItems[itemKey] || !!forceExpandedItems[itemKey] || !!expandedItemsRef.current[itemKey] || !!forceExpandedItemsRef.current[itemKey]}
+
+                onToggleExpand={() => toggleExpanded(itemKey)}
+                onTranscribe={() => handleIndividualTranscribe(item)}
+                isTranscribing={individualTranscribing[itemKey] || false}
+                transcribeError={individualTranscribeErrors[itemKey] || null}
+              />
+            );
+          })}
         </div>
 
         {/* Generate Summary Button */}

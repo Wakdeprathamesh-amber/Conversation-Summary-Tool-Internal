@@ -1,10 +1,13 @@
-import React from 'react';
+import React, { useState } from 'react';
 import Header from './components/common/Header';
 import DataInputSection from './components/data-input/DataInputSection';
 import TimelineSection from './components/timeline/TimelineSection';
+import StorageManager from './components/common/StorageManager';
 import { useDataInput } from './hooks/useDataInput';
 
 function App() {
+  const [showStorageManager, setShowStorageManager] = useState(false);
+  
   const {
     phoneEmail,
     setPhoneEmail,
@@ -23,14 +26,33 @@ function App() {
       <Header />
 
       <div className="max-w-7xl mx-auto px-6 py-8 space-y-8">
-        <DataInputSection
-          phoneEmail={phoneEmail}
-          setPhoneEmail={setPhoneEmail}
-          isLoading={isLoading}
-          onLookup={handleLookup}
-          error={error}
-          validateInput={validateInput}
-        />
+        <div className="flex justify-between items-center">
+          <div className="flex-1">
+            <DataInputSection
+              phoneEmail={phoneEmail}
+              setPhoneEmail={setPhoneEmail}
+              isLoading={isLoading}
+              onLookup={handleLookup}
+              error={error}
+              validateInput={validateInput}
+            />
+          </div>
+          <div className="ml-4">
+            <button
+              onClick={() => setShowStorageManager(!showStorageManager)}
+              className="px-4 py-2 bg-gray-600 text-white rounded hover:bg-gray-700 text-sm"
+            >
+              {showStorageManager ? 'Hide Storage' : 'Storage Manager'}
+            </button>
+          </div>
+        </div>
+
+        {showStorageManager && (
+          <StorageManager
+            backendApiUrl={import.meta.env.VITE_BACKEND_API_URL || 'http://localhost:8000'}
+            transcriptionApiUrl={import.meta.env.VITE_TRANSCRIPTION_API_URL || 'http://localhost:8001'}
+          />
+        )}
 
         {isLoading && (
           <div className="flex justify-center items-center py-8">

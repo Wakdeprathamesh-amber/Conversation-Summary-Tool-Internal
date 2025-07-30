@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, memo, useRef, useEffect, useCallback } from 'react';
 import { Clock, ChevronDown, ChevronUp } from 'lucide-react';
 import { formatDate } from '../../utils/formatters';
 
@@ -15,9 +15,27 @@ interface WhatsAppMessagesProps {
   messages: WhatsAppMessage[];
 }
 
-const WhatsAppMessages: React.FC<WhatsAppMessagesProps> = ({ messages }) => {
+const WhatsAppMessages: React.FC<WhatsAppMessagesProps> = memo(({ messages }) => {
   const [showAllMessages, setShowAllMessages] = useState(false);
   const [selectedDay, setSelectedDay] = useState<string | null>(null);
+  
+  // Use ref to track if component is mounted to prevent state updates after unmount
+  const isMountedRef = useRef(true);
+  
+  useEffect(() => {
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
+  
+
+  
+  // Create a stable callback for the show all messages button
+  const handleShowAllMessages = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setShowAllMessages(true);
+  }, []);
 
   // Group messages by day
   const groupMessagesByDay = (messages: WhatsAppMessage[]) => {
@@ -147,7 +165,7 @@ const WhatsAppMessages: React.FC<WhatsAppMessagesProps> = ({ messages }) => {
             {!showAllMessages && messages.length > 6 && (
               <div className="text-center mt-4">
                 <button
-                  onClick={() => setShowAllMessages(true)}
+                  onClick={handleShowAllMessages}
                   className="flex items-center space-x-1 mx-auto text-xs bg-green-100 text-green-700 px-3 py-2 rounded-md hover:bg-green-200 transition-colors"
                 >
                   <ChevronDown className="w-3 h-3" />
@@ -180,6 +198,10 @@ const WhatsAppMessages: React.FC<WhatsAppMessagesProps> = ({ messages }) => {
       </div>
     </div>
   );
-};
+}, (prevProps, nextProps) => {
+  // Custom comparison function
+  return prevProps.messages.length === nextProps.messages.length &&
+         JSON.stringify(prevProps.messages) === JSON.stringify(nextProps.messages);
+});
 
 export default WhatsAppMessages;

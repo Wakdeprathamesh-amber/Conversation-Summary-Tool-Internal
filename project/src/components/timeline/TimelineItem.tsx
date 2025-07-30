@@ -8,6 +8,9 @@ interface TimelineItemProps {
   isLast: boolean;
   isExpanded: boolean;
   onToggleExpand: () => void;
+  onTranscribe?: () => Promise<void>;
+  isTranscribing?: boolean;
+  transcribeError?: string | null;
 }
 
 const TRANSCRIPTION_API_URL = import.meta.env.VITE_TRANSCRIPTION_API_URL || 'http://localhost:8001';
@@ -16,8 +19,13 @@ const TimelineItem: React.FC<TimelineItemProps> = ({
   item,
   isLast,
   isExpanded,
-  onToggleExpand
+  onToggleExpand,
+  onTranscribe,
+  isTranscribing = false,
+  transcribeError = null
 }) => {
+  // Use a more stable key for transcript state to prevent reset on expand/collapse
+  const transcriptKey = `${item.id}-${item.type}`;
   const getItemIcon = () => {
     switch (item.type) {
       case 'whatsapp_pack':
@@ -140,30 +148,11 @@ const TimelineItem: React.FC<TimelineItemProps> = ({
     }
   };
 
-  // --- Transcription state ---
-  const [transcribing, setTranscribing] = useState(false);
-  const [transcript, setTranscript] = useState<string | null>(null);
-  const [transcribeError, setTranscribeError] = useState<string | null>(null);
-
-  const effectiveTranscript = item.transcript || transcript;
+  const effectiveTranscript = item.transcript;
 
   const handleTranscribe = async () => {
-    setTranscribing(true);
-    setTranscribeError(null);
-    setTranscript(null);
-    try {
-      const response = await fetch(`${TRANSCRIPTION_API_URL}/transcribe-call`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ record_url: item.record_url, mobile_number: item.to_number, call_id: item.id }),
-      });
-      if (!response.ok) throw new Error(await response.text());
-      const text = await response.text();
-      setTranscript(text);
-    } catch (err: any) {
-      setTranscribeError(err.message || 'Failed to transcribe');
-    } finally {
-      setTranscribing(false);
+    if (onTranscribe) {
+      await onTranscribe();
     }
   };
 
@@ -172,7 +161,10 @@ const TimelineItem: React.FC<TimelineItemProps> = ({
       case 'whatsapp_pack':
         return (
           <div className="mt-4 pt-4 border-t border-gray-200">
-            <WhatsAppMessages messages={item.messages || []} />
+            <WhatsAppMessages 
+              key={`whatsapp-${item.id}-${item.messages?.length || 0}-${item.timestamp}`} 
+              messages={item.messages || []} 
+            />
           </div>
         );
 
@@ -216,9 +208,9 @@ const TimelineItem: React.FC<TimelineItemProps> = ({
                 <button
                   className="flex items-center space-x-2 px-3 py-2 bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 transition-colors"
                   onClick={handleTranscribe}
-                  disabled={transcribing}
+                  disabled={isTranscribing}
                 >
-                  <span className="text-sm font-medium">{transcribing ? 'Transcribing...' : 'Transcribe'}</span>
+                  <span className="text-sm font-medium">{isTranscribing ? 'Transcribing...' : 'Transcribe'}</span>
                 </button>
               </div>
             )}

@@ -7,6 +7,9 @@ import uvicorn
 import sys
 import json
 
+# Import storage manager
+from storage_manager import StorageManager
+
 # Import the timeline extraction function
 def import_timeline_func():
     try:
@@ -19,6 +22,9 @@ def import_timeline_func():
 # Add import for orchestrator
 from llm_analysis.orchestrator import generate_requirements_summary
 from llm_analysis.orchestrator import generate_combined_summary
+
+# Initialize storage manager
+storage_manager = StorageManager(max_age_days=7, max_files_per_mobile=50)
 
 app = FastAPI()
 
@@ -66,6 +72,13 @@ def generate_summary_api(mobile: str = Query(None), email: str = Query(None)):
     Returns the raw LLM output as JSON.
     """
     import os
+    
+    # Check if cleanup is needed before processing
+    if storage_manager.should_cleanup():
+        print("Storage cleanup needed, running cleanup...")
+        cleanup_stats = storage_manager.cleanup_old_files()
+        print(f"Storage cleanup completed: {cleanup_stats}")
+    
     if not mobile and not email:
         return JSONResponse(status_code=400, content={"error": "Provide either mobile or email."})
     if mobile:
@@ -80,6 +93,24 @@ def generate_summary_api(mobile: str = Query(None), email: str = Query(None)):
     try:
         result = generate_combined_summary(timeline_path)
         return JSONResponse(content=result)
+    except Exception as e:
+        return JSONResponse(status_code=500, content={"error": str(e)})
+
+@app.get("/storage/stats")
+def get_storage_stats():
+    """Get current storage statistics"""
+    try:
+        stats = storage_manager.get_storage_stats()
+        return JSONResponse(content=stats)
+    except Exception as e:
+        return JSONResponse(status_code=500, content={"error": str(e)})
+
+@app.post("/storage/cleanup")
+def cleanup_storage():
+    """Manually trigger storage cleanup"""
+    try:
+        stats = storage_manager.cleanup_old_files()
+        return JSONResponse(content={"message": "Storage cleanup completed", "stats": stats})
     except Exception as e:
         return JSONResponse(status_code=500, content={"error": str(e)})
 

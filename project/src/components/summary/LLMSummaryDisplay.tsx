@@ -60,8 +60,70 @@ const LLMSummaryDisplay: React.FC<LLMSummaryDisplayProps> = ({ summaryMarkdown, 
   const summaryRef = useRef<HTMLDivElement>(null);
   const requirementsRef = useRef<HTMLDivElement>(null);
 
-  // Split markdown into sections by H2 headings
-  const sections = summaryMarkdown.split(/^## /gm).filter(Boolean);
+  // Handle both markdown and structured summary formats
+  // Check if conversation_summary has sections or if it's directly structured
+  const conversationSummary = rawData?.conversation_summary?.conversation_summary || rawData?.conversation_summary;
+  const isStructuredSummary = conversationSummary && typeof conversationSummary === 'object' && 
+    !Array.isArray(conversationSummary) && Object.keys(conversationSummary).length > 0;
+  
+  // Debug: Log the raw data structure
+  console.log('Conversation summary:', conversationSummary);
+  console.log('Is structured summary:', isStructuredSummary);
+  
+  let sections: string[] = [];
+  let sectionTitles: string[] = [];
+  
+  if (isStructuredSummary) {
+    // Handle structured summary format - convert to readable paragraphs
+    const structuredSections = conversationSummary;
+    console.log('Structured sections:', structuredSections);
+    
+    // Check if the sections are directly the values we need
+    if (typeof structuredSections === 'object' && structuredSections !== null) {
+      // Check if we have a nested sections structure
+      const actualSections = structuredSections.sections || structuredSections;
+      console.log('Actual sections:', actualSections);
+      
+      sectionTitles = Object.keys(actualSections).map(key => 
+        key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())
+      );
+      sections = Object.values(actualSections).map((section: any) => {
+      if (typeof section === 'object' && section !== null) {
+        // Convert structured data to readable paragraphs
+        const paragraphs = Object.entries(section)
+          .filter(([_, value]) => value && value !== 'Not mentioned' && value !== 'Unknown' && value !== null)
+          .map(([key, value]) => {
+            const fieldName = key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+            // Handle nested objects (like budget)
+            if (typeof value === 'object' && value !== null) {
+              const nestedValues = Object.entries(value)
+                .filter(([_, v]) => v && v !== 'Not mentioned' && v !== 'Unknown' && v !== null)
+                .map(([k, v]) => `${k.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}: ${v}`)
+                .join(', ');
+              return `${fieldName}: ${nestedValues}`;
+            }
+            return `${fieldName}: ${value}`;
+          });
+        
+        if (paragraphs.length === 0) {
+          return 'No specific information available for this section.';
+        }
+        
+        return paragraphs.join('. ') + '.';
+      } else if (typeof section === 'string') {
+        // Handle string sections
+        return section;
+      }
+              return section || 'No information available for this section.';
+      });
+      
+
+    }
+  } else {
+    // Handle markdown format
+    sections = summaryMarkdown.split(/^## /gm).filter(Boolean);
+    sectionTitles = sections.map((_, idx) => `Section ${idx + 1}`);
+  }
 
   const toggleSection = (idx: number) => {
     const newOpenSections = new Set(openSections);
@@ -174,8 +236,8 @@ const LLMSummaryDisplay: React.FC<LLMSummaryDisplayProps> = ({ summaryMarkdown, 
           <h2 className="text-xl font-bold mb-6 text-blue-700">Conversation Summary</h2>
           <div className="space-y-6">
             {sections.map((section, idx) => {
-              const heading = section.split('\n')[0];
-              const content = section.substring(heading.length).trim();
+              const heading = isStructuredSummary ? sectionTitles[idx] : section.split('\n')[0];
+              const content = isStructuredSummary ? section : section.substring(heading.length).trim();
               const isOpen = openSections.has(idx);
               
               return (
@@ -200,15 +262,19 @@ const LLMSummaryDisplay: React.FC<LLMSummaryDisplayProps> = ({ summaryMarkdown, 
                   {isOpen && (
                     <div className="px-4 py-3 bg-white border-t">
                       <div className="prose prose-sm max-w-none text-gray-700">
-                        <ReactMarkdown
-                          components={{
-                            p: ({ children }) => <p className="mb-3 last:mb-0">{children}</p>,
-                            ul: ({ children }) => <ul className="list-disc pl-4 mb-3 last:mb-0 space-y-1">{children}</ul>,
-                            li: ({ children }) => <li>{children}</li>,
-                          }}
-                        >
-                          {content}
-                        </ReactMarkdown>
+                        {isStructuredSummary ? (
+                          <p className="mb-3 last:mb-0 leading-relaxed">{content}</p>
+                        ) : (
+                          <ReactMarkdown
+                            components={{
+                              p: ({ children }) => <p className="mb-3 last:mb-0">{children}</p>,
+                              ul: ({ children }) => <ul className="list-disc pl-4 mb-3 last:mb-0 space-y-1">{children}</ul>,
+                              li: ({ children }) => <li>{children}</li>,
+                            }}
+                          >
+                            {content}
+                          </ReactMarkdown>
+                        )}
                       </div>
                     </div>
                   )}
