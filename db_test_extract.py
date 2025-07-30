@@ -57,8 +57,8 @@ class Databaseconnect:
                 },
                 # Disable PostgreSQL-specific features that don't work with Redshift
                 isolation_level="AUTOCOMMIT",
-                # Disable features that cause issues with Redshift
-                use_native_unicode=False,
+                # Enable native unicode for Python 3 compatibility
+                use_native_unicode=True,
                 # Disable the problematic initialization
                 echo=False
             )
