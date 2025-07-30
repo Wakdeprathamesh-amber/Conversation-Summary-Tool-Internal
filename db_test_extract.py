@@ -27,16 +27,36 @@ logging.basicConfig(
 
 class Databaseconnect:
     def __init__(self, config_path='/etc/secrets/redshift.yaml'):
-        with open(config_path, 'r') as file:
-            self.config = yaml.safe_load(file)
-
-
+        try:
+            with open(config_path, 'r') as file:
+                self.config = yaml.safe_load(file)
+            logging.info(f"Database config loaded successfully from {config_path}")
+        except Exception as e:
+            logging.error(f"Failed to load database config from {config_path}: {e}")
+            # Try alternative config path for Render
+            alt_config_path = 'redshift.yaml'
+            try:
+                with open(alt_config_path, 'r') as file:
+                    self.config = yaml.safe_load(file)
+                logging.info(f"Database config loaded successfully from {alt_config_path}")
+            except Exception as e2:
+                logging.error(f"Failed to load database config from {alt_config_path}: {e2}")
+                raise
 
     def connect_database(self):
-        # Create SQLAlchemy engine for better pandas compatibility
-        connection_string = f"postgresql://{self.config['USER']}:{self.config['PASS']}@{self.config['HOST']}:{self.config['PORT']}/{self.config['NAME']}"
-        engine = create_engine(connection_string)
-        return engine
+        try:
+            # Create SQLAlchemy engine for better pandas compatibility
+            connection_string = f"postgresql://{self.config['USER']}:{self.config['PASS']}@{self.config['HOST']}:{self.config['PORT']}/{self.config['NAME']}"
+            logging.info(f"Attempting to connect to database: {self.config['HOST']}:{self.config['PORT']}/{self.config['NAME']}")
+            engine = create_engine(connection_string)
+            # Test the connection
+            with engine.connect() as conn:
+                conn.execute("SELECT 1")
+            logging.info("Database connection successful")
+            return engine
+        except Exception as e:
+            logging.error(f"Database connection failed: {e}")
+            raise
 
 def normalize_timestamp(ts):
     """Convert various timestamp formats to ISO string format"""

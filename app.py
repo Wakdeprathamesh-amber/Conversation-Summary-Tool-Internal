@@ -52,27 +52,48 @@ def generate_timeline_api(mobile: str = Query(None), email: str = Query(None)):
     Generate timeline for a given mobile number or email.
     Returns the timeline JSON as used by the frontend.
     """
-    timeline_func = import_timeline_func()
-    if not timeline_func:
-        return JSONResponse(status_code=500, content={"error": "Timeline extraction function not available."})
-    if not mobile and not email:
-        return JSONResponse(status_code=400, content={"error": "Provide either mobile or email."})
-    # Run extraction and load the generated file
-    timeline_func(mobile_number=mobile, email=email)
-    # Determine file path
-    import os
-    if mobile:
-        timeline_path = os.path.join('data', f'timeline_{mobile}.json')
-    elif email:
-        email_safe = email.replace('@', '_').replace('.', '_')
-        timeline_path = os.path.join('data', f'timeline_{email_safe}.json')
-    else:
-        timeline_path = os.path.join('data', 'timeline_unknown.json')
-    if not os.path.exists(timeline_path):
-        return JSONResponse(status_code=404, content={"error": "Timeline not found."})
-    with open(timeline_path, 'r', encoding='utf-8') as f:
-        timeline = f.read()
-    return JSONResponse(content=json.loads(timeline))
+    try:
+        print(f"[API] generate-timeline called with mobile={mobile}, email={email}")
+        
+        timeline_func = import_timeline_func()
+        if not timeline_func:
+            print("[API] Timeline extraction function not available")
+            return JSONResponse(status_code=500, content={"error": "Timeline extraction function not available."})
+        
+        if not mobile and not email:
+            print("[API] No mobile or email provided")
+            return JSONResponse(status_code=400, content={"error": "Provide either mobile or email."})
+        
+        print(f"[API] Running timeline extraction for: {mobile or email}")
+        # Run extraction and load the generated file
+        timeline_func(mobile_number=mobile, email=email)
+        
+        # Determine file path
+        import os
+        if mobile:
+            timeline_path = os.path.join('data', f'timeline_{mobile}.json')
+        elif email:
+            email_safe = email.replace('@', '_').replace('.', '_')
+            timeline_path = os.path.join('data', f'timeline_{email_safe}.json')
+        else:
+            timeline_path = os.path.join('data', 'timeline_unknown.json')
+        
+        print(f"[API] Looking for timeline file: {timeline_path}")
+        if not os.path.exists(timeline_path):
+            print(f"[API] Timeline file not found: {timeline_path}")
+            return JSONResponse(status_code=404, content={"error": "Timeline not found."})
+        
+        with open(timeline_path, 'r', encoding='utf-8') as f:
+            timeline = f.read()
+        
+        print(f"[API] Timeline loaded successfully, size: {len(timeline)} characters")
+        return JSONResponse(content=json.loads(timeline))
+        
+    except Exception as e:
+        print(f"[API] Error in generate-timeline: {e}")
+        import traceback
+        traceback.print_exc()
+        return JSONResponse(status_code=500, content={"error": f"Internal server error: {str(e)}"})
 
 @app.get("/generate-summary")
 def generate_summary_api(mobile: str = Query(None), email: str = Query(None)):
