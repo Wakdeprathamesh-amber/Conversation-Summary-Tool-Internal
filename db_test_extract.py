@@ -45,17 +45,28 @@ class Databaseconnect:
 
     def connect_database(self):
         try:
-            # Create SQLAlchemy engine for better pandas compatibility
+            # Create SQLAlchemy engine for Redshift compatibility
             connection_string = f"postgresql://{self.config['USER']}:{self.config['PASS']}@{self.config['HOST']}:{self.config['PORT']}/{self.config['NAME']}"
-            logging.info(f"Attempting to connect to database: {self.config['HOST']}:{self.config['PORT']}/{self.config['NAME']}")
-            engine = create_engine(connection_string)
-            # Test the connection
-            with engine.connect() as conn:
-                conn.execute("SELECT 1")
-            logging.info("Database connection successful")
+            logging.info(f"Attempting to connect to Redshift: {self.config['HOST']}:{self.config['PORT']}/{self.config['NAME']}")
+            
+            # Use Redshift-compatible engine configuration
+            engine = create_engine(
+                connection_string,
+                connect_args={
+                    "options": "-c search_path=public"
+                },
+                # Disable PostgreSQL-specific features that don't work with Redshift
+                isolation_level="AUTOCOMMIT",
+                # Disable features that cause issues with Redshift
+                use_native_unicode=False,
+                # Disable the problematic initialization
+                echo=False
+            )
+            
+            logging.info("Redshift engine created successfully")
             return engine
         except Exception as e:
-            logging.error(f"Database connection failed: {e}")
+            logging.error(f"Redshift connection failed: {e}")
             raise
 
 def normalize_timestamp(ts):
@@ -212,7 +223,9 @@ def consolidate_and_save_timeline(mobile_number=None, email=None):
     def fetch_whatsapp():
         try:
             engine = Databaseconnect().connect_database()
-            df = pd.read_sql(whatsapp_query, engine, params=[contact])
+            # Use raw connection to avoid SQLAlchemy initialization issues
+            with engine.raw_connection() as conn:
+                df = pd.read_sql(whatsapp_query, conn, params=[contact])
             logging.info("Fetched WhatsApp data successfully.")
             return df
         except Exception as e:
@@ -221,7 +234,9 @@ def consolidate_and_save_timeline(mobile_number=None, email=None):
     def fetch_mail():
         try:
             engine = Databaseconnect().connect_database()
-            df = pd.read_sql(mail_query, engine, params=[contact, contact])
+            # Use raw connection to avoid SQLAlchemy initialization issues
+            with engine.raw_connection() as conn:
+                df = pd.read_sql(mail_query, conn, params=[contact, contact])
             logging.info("Fetched mail data successfully.")
             return df
         except Exception as e:
@@ -230,7 +245,9 @@ def consolidate_and_save_timeline(mobile_number=None, email=None):
     def fetch_call():
         try:
             engine = Databaseconnect().connect_database()
-            df = pd.read_sql(call_query, engine, params=[contact, contact])
+            # Use raw connection to avoid SQLAlchemy initialization issues
+            with engine.raw_connection() as conn:
+                df = pd.read_sql(call_query, conn, params=[contact, contact])
             logging.info("Fetched call data successfully.")
             return df
         except Exception as e:
@@ -239,7 +256,9 @@ def consolidate_and_save_timeline(mobile_number=None, email=None):
     def fetch_lead():
         try:
             engine = Databaseconnect().connect_database()
-            df = pd.read_sql(lead_query, engine, params=[contact, contact])
+            # Use raw connection to avoid SQLAlchemy initialization issues
+            with engine.raw_connection() as conn:
+                df = pd.read_sql(lead_query, conn, params=[contact, contact])
             logging.info("Fetched lead info successfully.")
             return df
         except Exception as e:
