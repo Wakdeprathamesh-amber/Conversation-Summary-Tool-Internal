@@ -9,15 +9,18 @@ import json
 
 # Import storage manager
 from storage_manager import StorageManager
-
 # Import the timeline extraction function
 def import_timeline_func():
     try:
         from db_test_extract import consolidate_and_save_timeline
         return consolidate_and_save_timeline
-    except ImportError:
-        print("Could not import timeline extraction function.")
+    except ImportError as e:
+        import traceback
+        print("Could not import timeline extraction function:", e)
+        traceback.print_exc()
         return None
+
+
 
 # Add import for orchestrator
 from llm_analysis.orchestrator import generate_requirements_summary

@@ -8,5 +8,7 @@ tiktoken
 beautifulsoup4
 gunicorn
 uvicorn[standard]
-# redshift-connector
-
+redshift-connector
+pandas
+numpy
+pyyaml
