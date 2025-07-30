@@ -13,9 +13,12 @@ from dotenv import load_dotenv
 # FastAPI imports for API endpoint
 from fastapi import FastAPI, HTTPException, Request
 from pydantic import BaseModel
-from fastapi.responses import PlainTextResponse
+from fastapi.responses import PlainTextResponse, JSONResponse
 import uvicorn
 from fastapi.middleware.cors import CORSMiddleware
+
+# Import storage manager
+from storage_manager import StorageManager
 
 load_dotenv()
 
@@ -34,6 +37,9 @@ aai.settings.api_key = os.getenv('ASSEMBLYAI_API_KEY', 'YOUR_API_KEY_HERE')
 TRANSCRIPTS_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'data', 'transcripts')
 CALLS_INPUT_FILE = 'calls_to_transcribe.json'
 PROGRESS_FILE = 'transcription_progress.json'
+
+# Initialize storage manager
+storage_manager = StorageManager(max_age_days=7, max_files_per_mobile=50)
 
 # Transcription configuration
 TRANSCRIPTION_CONFIG = {
@@ -112,12 +118,18 @@ def get_plivo_s3_url(record_url: str) -> str:
 # --- FastAPI setup ---
 app = FastAPI()
 
-# Enable CORS for all origins (for development)
+# Enable CORS for frontend development and production
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Or specify ["http://localhost:5173"] for stricter security
+    allow_origins=[
+        "http://localhost:5173",  # Local development
+        "http://localhost:3000",  # Alternative local port
+        "https://summary-frontend.onrender.com",  # Render frontend
+        "https://*.onrender.com",  # Any Render subdomain
+        "*"  # Fallback for any origin
+    ],
     allow_credentials=True,
-    allow_methods=["*"],
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allow_headers=["*"],
 )
 
@@ -167,6 +179,12 @@ def append_transcript_to_timeline(mobile_number, call_id, transcript_text):
 @app.post("/transcribe-call", response_class=PlainTextResponse)
 def transcribe_call_api(req: TranscribeRequest):
     try:
+        # Check if cleanup is needed before processing
+        if storage_manager.should_cleanup():
+            logging.info("Storage cleanup needed, running cleanup...")
+            cleanup_stats = storage_manager.cleanup_old_files()
+            logging.info(f"Storage cleanup completed: {cleanup_stats}")
+        
         s3_url = get_plivo_s3_url(req.record_url)
         mobile_number = req.mobile_number or "apiuser"
         serial = req.serial or int(datetime.now().timestamp())
@@ -199,6 +217,26 @@ def transcribe_call_api(req: TranscribeRequest):
         return transcript_text
     except Exception as e:
         logging.error(f"[API] Failed to transcribe: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/storage/stats", response_class=JSONResponse)
+def get_storage_stats():
+    """Get current storage statistics"""
+    try:
+        stats = storage_manager.get_storage_stats()
+        return stats
+    except Exception as e:
+        logging.error(f"Failed to get storage stats: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/storage/cleanup", response_class=JSONResponse)
+def cleanup_storage():
+    """Manually trigger storage cleanup"""
+    try:
+        stats = storage_manager.cleanup_old_files()
+        return {"message": "Storage cleanup completed", "stats": stats}
+    except Exception as e:
+        logging.error(f"Storage cleanup failed: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 def load_calls_list(filename: str) -> List[Dict]:

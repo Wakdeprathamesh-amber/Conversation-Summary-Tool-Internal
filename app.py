@@ -31,12 +31,18 @@ storage_manager = StorageManager(max_age_days=7, max_files_per_mobile=50)
 
 app = FastAPI()
 
-# Allow CORS for local frontend development
+# Allow CORS for frontend development and production
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=[
+        "http://localhost:5173",  # Local development
+        "http://localhost:3000",  # Alternative local port
+        "https://summary-frontend.onrender.com",  # Render frontend
+        "https://*.onrender.com",  # Any Render subdomain
+        "*"  # Fallback for any origin
+    ],
     allow_credentials=True,
-    allow_methods=["*"],
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allow_headers=["*"],
 )
 
