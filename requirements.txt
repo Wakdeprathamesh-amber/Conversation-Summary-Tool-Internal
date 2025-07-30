@@ -12,3 +12,5 @@ redshift-connector
 pandas
 numpy
 pyyaml
+sqlalchemy
+psycopg2-binary
