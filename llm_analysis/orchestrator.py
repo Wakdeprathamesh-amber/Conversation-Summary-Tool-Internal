@@ -8,7 +8,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 def generate_requirements_summary(timeline_path: str):
-    print(f"[Orchestrator] Starting summary generation for: {timeline_path}")
+    print(f"[Orchestrator] Starting requirements extraction...")
     openai_api_key = os.getenv("OPENAI_API_KEY")
     if not openai_api_key:
         print("[Orchestrator] ERROR: OPENAI_API_KEY not set!")
@@ -18,14 +18,14 @@ def generate_requirements_summary(timeline_path: str):
     output_path = None
     try:
         result = node.run(timeline_path, output_path)
-        print("[Orchestrator] Requirements summary generation complete.")
+        print("[Orchestrator] Requirements extraction complete.")
         return result
     except Exception as e:
         print(f"[Orchestrator] ERROR: {e}")
         raise
 
 def generate_tasks_actionables_summary(timeline_path: str):
-    print(f"[Orchestrator] Starting tasks/actionables extraction for: {timeline_path}")
+    print(f"[Orchestrator] Starting tasks/actionables extraction...")
     openai_api_key = os.getenv("OPENAI_API_KEY")
     if not openai_api_key:
         print("[Orchestrator] ERROR: OPENAI_API_KEY not set!")
@@ -42,7 +42,7 @@ def generate_tasks_actionables_summary(timeline_path: str):
         raise
 
 def generate_conversation_summary(timeline_path: str):
-    print(f"[Orchestrator] Starting conversation summary extraction for: {timeline_path}")
+    print(f"[Orchestrator] Starting conversation summary extraction...")
     openai_api_key = os.getenv("OPENAI_API_KEY")
     if not openai_api_key:
         print("[Orchestrator] ERROR: OPENAI_API_KEY not set!")

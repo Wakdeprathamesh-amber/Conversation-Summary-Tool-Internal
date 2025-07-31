@@ -18,9 +18,7 @@ class TasksAndActionablesNode:
         prompt = self.load_prompt()
         timeline_str = json.dumps(timeline, indent=2, ensure_ascii=False)
         full_prompt = prompt.replace('{TIMELINE}', timeline_str)
-        print("\n[TasksAndActionablesNode] === PROMPT SENT TO LLM ===\n")
-        print(full_prompt)
-        print("\n[TasksAndActionablesNode] === END PROMPT ===\n")
+        print("[TasksAndActionablesNode] Sending prompt to LLM...")
         response = self.client.chat.completions.create(
             model="gpt-4.1-mini",
             messages=[
@@ -31,9 +29,7 @@ class TasksAndActionablesNode:
             max_tokens=1500
         )
         result_text = response.choices[0].message.content
-        print("\n[TasksAndActionablesNode] === RAW LLM RESPONSE ===\n")
-        print(result_text)
-        print("\n[TasksAndActionablesNode] === END RAW RESPONSE ===\n")
+        print("[TasksAndActionablesNode] Received LLM response")
         try:
             result_json = json.loads(result_text)
         except Exception as e:

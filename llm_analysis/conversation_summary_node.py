@@ -18,9 +18,7 @@ class ConversationSummaryNode:
         prompt = self.load_prompt()
         timeline_str = json.dumps(timeline, indent=2, ensure_ascii=False)
         full_prompt = prompt.replace('{TIMELINE}', timeline_str)
-        print("\n[ConversationSummaryNode] === PROMPT SENT TO LLM ===\n")
-        print(full_prompt)
-        print("\n[ConversationSummaryNode] === END PROMPT ===\n")
+        print("[ConversationSummaryNode] Sending prompt to LLM...")
         response = self.client.chat.completions.create(
             model="gpt-4.1-mini",
             messages=[
@@ -31,9 +29,7 @@ class ConversationSummaryNode:
             max_tokens=1800
         )
         result_text = response.choices[0].message.content
-        print("\n[ConversationSummaryNode] === RAW LLM RESPONSE ===\n")
-        print(result_text)
-        print("\n[ConversationSummaryNode] === END RAW RESPONSE ===\n")
+        print("[ConversationSummaryNode] Received LLM response")
         try:
             result_json = json.loads(result_text)
         except Exception as e:

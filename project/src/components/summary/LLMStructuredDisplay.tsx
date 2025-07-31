@@ -106,8 +106,23 @@ const KeyValueTable: React.FC<{ data: Record<string, any> }> = ({ data }) => (
               : typeof value === 'object' && !Array.isArray(value)
                 ? (() => {
                     // Special handling for budget object
-                    if (key === 'budget' && value.max && value.currency) {
-                      return `${value.max} ${value.currency}`;
+                    if (key === 'budget') {
+                      if (value.max && value.currency) {
+                        return `${value.max} ${value.currency}`;
+                      } else if (value.currency) {
+                        // If only currency is available, show it
+                        return value.currency;
+                      } else if (typeof value === 'object') {
+                        // Handle other budget object formats
+                        const budgetParts = Object.entries(value)
+                          .filter(([_, v]) => v !== null && v !== undefined && v !== '')
+                          .map(([k, v]) => {
+                            if (k === 'currency') return v;
+                            if (k === 'max' || k === 'amount') return `${v}`;
+                            return `${k.replace(/_/g, ' ')}: ${v}`;
+                          });
+                        return budgetParts.join(' ') || 'None';
+                      }
                     }
                     // Handle other nested objects
                     return Object.entries(value)
