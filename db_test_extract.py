@@ -222,8 +222,9 @@ def consolidate_and_save_timeline(mobile_number=None, email=None):
     def fetch_whatsapp():
         try:
             engine = Databaseconnect().connect_database()
-            # Use regular connection with proper error handling
-            df = pd.read_sql(whatsapp_query, engine, params=[contact])
+            # Use SQLAlchemy connection with pandas
+            with engine.connect() as connection:
+                df = pd.read_sql(whatsapp_query, connection, params=[contact])
             logging.info(f"Fetched WhatsApp data successfully. Rows: {len(df)}")
             return df
         except Exception as e:
@@ -232,8 +233,9 @@ def consolidate_and_save_timeline(mobile_number=None, email=None):
     def fetch_mail():
         try:
             engine = Databaseconnect().connect_database()
-            # Use regular connection with proper error handling
-            df = pd.read_sql(mail_query, engine, params=[contact, contact])
+            # Use SQLAlchemy connection with pandas
+            with engine.connect() as connection:
+                df = pd.read_sql(mail_query, connection, params=[contact, contact])
             logging.info(f"Fetched mail data successfully. Rows: {len(df)}")
             return df
         except Exception as e:
@@ -242,8 +244,9 @@ def consolidate_and_save_timeline(mobile_number=None, email=None):
     def fetch_call():
         try:
             engine = Databaseconnect().connect_database()
-            # Use regular connection with proper error handling
-            df = pd.read_sql(call_query, engine, params=[contact, contact])
+            # Use SQLAlchemy connection with pandas
+            with engine.connect() as connection:
+                df = pd.read_sql(call_query, connection, params=[contact, contact])
             logging.info(f"Fetched call data successfully. Rows: {len(df)}")
             return df
         except Exception as e:
@@ -252,8 +255,9 @@ def consolidate_and_save_timeline(mobile_number=None, email=None):
     def fetch_lead():
         try:
             engine = Databaseconnect().connect_database()
-            # Use regular connection with proper error handling
-            df = pd.read_sql(lead_query, engine, params=[contact, contact])
+            # Use SQLAlchemy connection with pandas
+            with engine.connect() as connection:
+                df = pd.read_sql(lead_query, connection, params=[contact, contact])
             logging.info(f"Fetched lead info successfully. Rows: {len(df)}")
             return df
         except Exception as e:
