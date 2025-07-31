@@ -1,4 +1,5 @@
 import yaml
+import redshift_connector
 import pandas as pd
 import os
 import json
@@ -7,7 +8,6 @@ import numpy as np
 from concurrent.futures import ThreadPoolExecutor
 import logging
 import traceback
-from sqlalchemy import create_engine
 
 # Setup logging
 logging.basicConfig(
@@ -44,26 +44,19 @@ class Databaseconnect:
 
     def connect_database(self):
         try:
-            # Create SQLAlchemy engine for Redshift compatibility
-            connection_string = f"postgresql://{self.config['USER']}:{self.config['PASS']}@{self.config['HOST']}:{self.config['PORT']}/{self.config['NAME']}"
             logging.info(f"Attempting to connect to Redshift: {self.config['HOST']}:{self.config['PORT']}/{self.config['NAME']}")
             
-            # Use Redshift-compatible engine configuration
-            engine = create_engine(
-                connection_string,
-                connect_args={
-                    "options": "-c search_path=public"
-                },
-                # Disable PostgreSQL-specific features that don't work with Redshift
-                isolation_level="AUTOCOMMIT",
-                # Enable native unicode for Python 3 compatibility
-                use_native_unicode=True,
-                # Disable the problematic initialization
-                echo=False
+            # Use redshift_connector for proper Redshift connection
+            conn = redshift_connector.connect(
+                host=self.config['HOST'],
+                port=self.config['PORT'],
+                database=self.config['NAME'],
+                user=self.config['USER'],
+                password=self.config['PASS']
             )
             
-            logging.info("Redshift engine created successfully")
-            return engine
+            logging.info("Redshift connection successful")
+            return conn
         except Exception as e:
             logging.error(f"Redshift connection failed: {e}")
             raise
@@ -221,10 +214,10 @@ def consolidate_and_save_timeline(mobile_number=None, email=None):
 
     def fetch_whatsapp():
         try:
-            engine = Databaseconnect().connect_database()
-            # Use SQLAlchemy connection with pandas
-            with engine.connect() as connection:
-                df = pd.read_sql(whatsapp_query, connection, params=[contact])
+            conn = Databaseconnect().connect_database()
+            # Use redshift_connector with pandas
+            df = pd.read_sql(whatsapp_query, conn, params=[contact])
+            conn.close()
             logging.info(f"Fetched WhatsApp data successfully. Rows: {len(df)}")
             return df
         except Exception as e:
@@ -232,10 +225,10 @@ def consolidate_and_save_timeline(mobile_number=None, email=None):
             return pd.DataFrame()
     def fetch_mail():
         try:
-            engine = Databaseconnect().connect_database()
-            # Use SQLAlchemy connection with pandas
-            with engine.connect() as connection:
-                df = pd.read_sql(mail_query, connection, params=[contact, contact])
+            conn = Databaseconnect().connect_database()
+            # Use redshift_connector with pandas
+            df = pd.read_sql(mail_query, conn, params=[contact, contact])
+            conn.close()
             logging.info(f"Fetched mail data successfully. Rows: {len(df)}")
             return df
         except Exception as e:
@@ -243,10 +236,10 @@ def consolidate_and_save_timeline(mobile_number=None, email=None):
             return pd.DataFrame()
     def fetch_call():
         try:
-            engine = Databaseconnect().connect_database()
-            # Use SQLAlchemy connection with pandas
-            with engine.connect() as connection:
-                df = pd.read_sql(call_query, connection, params=[contact, contact])
+            conn = Databaseconnect().connect_database()
+            # Use redshift_connector with pandas
+            df = pd.read_sql(call_query, conn, params=[contact, contact])
+            conn.close()
             logging.info(f"Fetched call data successfully. Rows: {len(df)}")
             return df
         except Exception as e:
@@ -254,10 +247,10 @@ def consolidate_and_save_timeline(mobile_number=None, email=None):
             return pd.DataFrame()
     def fetch_lead():
         try:
-            engine = Databaseconnect().connect_database()
-            # Use SQLAlchemy connection with pandas
-            with engine.connect() as connection:
-                df = pd.read_sql(lead_query, connection, params=[contact, contact])
+            conn = Databaseconnect().connect_database()
+            # Use redshift_connector with pandas
+            df = pd.read_sql(lead_query, conn, params=[contact, contact])
+            conn.close()
             logging.info(f"Fetched lead info successfully. Rows: {len(df)}")
             return df
         except Exception as e:
