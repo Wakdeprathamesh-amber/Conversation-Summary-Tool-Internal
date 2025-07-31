@@ -23,7 +23,6 @@ def import_timeline_func():
 
 
 # Add import for orchestrator
-from llm_analysis.orchestrator import generate_requirements_summary
 from llm_analysis.orchestrator import generate_combined_summary
 
 # Initialize storage manager

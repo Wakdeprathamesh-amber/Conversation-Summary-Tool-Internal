@@ -1,5 +1,4 @@
 import yaml
-import redshift_connector
 import pandas as pd
 import os
 import json
@@ -225,7 +224,7 @@ def consolidate_and_save_timeline(mobile_number=None, email=None):
             engine = Databaseconnect().connect_database()
             # Use regular connection with proper error handling
             df = pd.read_sql(whatsapp_query, engine, params=[contact])
-            logging.info("Fetched WhatsApp data successfully.")
+            logging.info(f"Fetched WhatsApp data successfully. Rows: {len(df)}")
             return df
         except Exception as e:
             logging.error(f"WhatsApp query failed: {e}\n{traceback.format_exc()}")
@@ -235,7 +234,7 @@ def consolidate_and_save_timeline(mobile_number=None, email=None):
             engine = Databaseconnect().connect_database()
             # Use regular connection with proper error handling
             df = pd.read_sql(mail_query, engine, params=[contact, contact])
-            logging.info("Fetched mail data successfully.")
+            logging.info(f"Fetched mail data successfully. Rows: {len(df)}")
             return df
         except Exception as e:
             logging.warning(f"Mail query failed: {e}\n{traceback.format_exc()}")
@@ -245,7 +244,7 @@ def consolidate_and_save_timeline(mobile_number=None, email=None):
             engine = Databaseconnect().connect_database()
             # Use regular connection with proper error handling
             df = pd.read_sql(call_query, engine, params=[contact, contact])
-            logging.info("Fetched call data successfully.")
+            logging.info(f"Fetched call data successfully. Rows: {len(df)}")
             return df
         except Exception as e:
             logging.error(f"Call query failed: {e}\n{traceback.format_exc()}")
@@ -255,7 +254,7 @@ def consolidate_and_save_timeline(mobile_number=None, email=None):
             engine = Databaseconnect().connect_database()
             # Use regular connection with proper error handling
             df = pd.read_sql(lead_query, engine, params=[contact, contact])
-            logging.info("Fetched lead info successfully.")
+            logging.info(f"Fetched lead info successfully. Rows: {len(df)}")
             return df
         except Exception as e:
             logging.error(f"Lead info query failed: {e}\n{traceback.format_exc()}")
@@ -275,6 +274,8 @@ def consolidate_and_save_timeline(mobile_number=None, email=None):
         mail_df = clean_dataframe_for_json(results['mail'])
         call_df = clean_dataframe_for_json(results['call'])
         lead_df = clean_dataframe_for_json(results['lead'])
+        
+        logging.info(f"Data summary - WhatsApp: {len(whatsapp_df)} rows, Mail: {len(mail_df)} rows, Call: {len(call_df)} rows, Lead: {len(lead_df)} rows")
 
         # Build events list
         events = []
@@ -323,6 +324,10 @@ def consolidate_and_save_timeline(mobile_number=None, email=None):
         # Filter out events without timestamps and sort
         events = [e for e in events if e.get('timestamp')]
         events.sort(key=lambda x: x['timestamp'])
+        
+        logging.info(f"Total events created: {len(events)}")
+        if events:
+            logging.info(f"Event types: {list(set(e.get('type', 'unknown') for e in events))}")
 
         # Ensure all data is JSON serializable
         for event in events:
@@ -355,6 +360,7 @@ def consolidate_and_save_timeline(mobile_number=None, email=None):
 
         # Create output directory and save
         os.makedirs('data', exist_ok=True)
+        logging.info(f"Data directory created/verified: {os.path.abspath('data')}")
 
         if mobile_number:
             timeline_path = os.path.join('data', f'timeline_{mobile_number}.json')
@@ -364,6 +370,8 @@ def consolidate_and_save_timeline(mobile_number=None, email=None):
             timeline_path = os.path.join('data', f'timeline_{email_safe}.json')
         else:
             timeline_path = os.path.join('data', 'timeline_unknown.json')
+        
+        logging.info(f"Timeline will be saved to: {timeline_path}")
 
         try:
             with open(timeline_path, 'w', encoding='utf-8') as f:
